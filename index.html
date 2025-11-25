@@ -809,6 +809,40 @@
     .btn-download-rss:hover {
       background: #F57C00;
     }
+    
+    /* Modal de substituição RSS */
+    .replace-options {
+      display: flex;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    .replace-options button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    
+    .btn-replace {
+      background: #e50914;
+      color: white;
+    }
+    
+    .btn-replace:hover {
+      background: #c40812;
+    }
+    
+    .btn-merge {
+      background: #2196F3;
+      color: white;
+    }
+    
+    .btn-merge:hover {
+      background: #1976D2;
+    }
   </style>
 </head>
 <body>
@@ -1030,6 +1064,32 @@
   </div>
 </div>
 
+<!-- Modal de Substituição RSS -->
+<div class="modal" id="modal-replace-rss">
+  <div class="modal-box">
+    <h3>🔄 Importar RSS</h3>
+    
+    <div class="form-group">
+      <label>Como deseja importar o arquivo RSS?</label>
+      <p>O arquivo contém <span id="rss-item-count">0</span> itens.</p>
+    </div>
+
+    <div class="replace-options">
+      <button class="btn-replace" onclick="replaceRSSData()">Substituir Tudo</button>
+      <button class="btn-merge" onclick="mergeRSSData()">Adicionar aos Existentes</button>
+    </div>
+
+    <div class="modal-buttons">
+      <button class="btn-cancel" onclick="closeReplaceRSSModal()">Cancelar</button>
+    </div>
+
+    <div class="modal-info">
+      💡 <strong>Substituir Tudo:</strong> Remove todos os itens atuais e adiciona apenas os do arquivo.<br>
+      💡 <strong>Adicionar aos Existentes:</strong> Mantém os itens atuais e adiciona os do arquivo.
+    </div>
+  </div>
+</div>
+
 <script>
   // Configurações
   const TMDB_API_KEY = '0dea6057249cfc73c2758f6166eb0d6f';
@@ -1050,6 +1110,8 @@
   let lastSearchTerm = '';
   let m3uItems = [];
   let selectedM3UItem = null;
+  let pendingRSSData = null;
+  let pendingRSSFileName = '';
 
   const categoriesContainer = document.getElementById('categories-container');
   const statusMessage = document.getElementById('status-message');
@@ -1186,6 +1248,8 @@
       targetTab = 'home';
     }
 
+    pendingRSSFileName = fileName;
+
     const reader = new FileReader();
     reader.onload = function(e) {
       try {
@@ -1209,32 +1273,71 @@
           logo: item.querySelector('media\\:thumbnail, [url]')?.getAttribute('url') ?? ''
         }));
 
-        // Perguntar ao usuário se quer substituir ou adicionar
-        if (rssItems[targetTab].length > 0) {
-          if (confirm(`Deseja substituir todos os ${targetTab} atuais pelos importados? Clique em "Cancelar" para adicionar aos existentes.`)) {
-            rssItems[targetTab] = importedItems;
-          } else {
-            rssItems[targetTab] = [...rssItems[targetTab], ...importedItems];
-          }
-        } else {
-          rssItems[targetTab] = importedItems;
-        }
+        // Armazena os dados importados para processamento posterior
+        pendingRSSData = {
+          targetTab: targetTab,
+          items: importedItems
+        };
 
-        saveData();
-        
-        // Mudar para a aba correspondente
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelector(`.tab[data-tab="${targetTab}"]`).classList.add('active');
-        currentTab = targetTab;
-        
-        fetchAndRender();
-        showStatus(`✅ ${importedItems.length} itens importados do RSS para ${targetTab}!`, 'success');
+        // Mostra modal de substituição
+        document.getElementById('rss-item-count').textContent = importedItems.length;
+        document.getElementById('modal-replace-rss').classList.add('active');
+
       } catch (error) {
         showStatus('❌ Erro ao importar RSS: ' + error.message, 'error');
       }
     };
     reader.readAsText(file);
     event.target.value = ''; // Reset input
+  }
+
+  // Substituir dados RSS
+  function replaceRSSData() {
+    if (!pendingRSSData) return;
+    
+    const { targetTab, items } = pendingRSSData;
+    
+    // Substitui todos os itens da aba
+    rssItems[targetTab] = items;
+    saveData();
+    
+    // Mudar para a aba correspondente
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.tab[data-tab="${targetTab}"]`).classList.add('active');
+    currentTab = targetTab;
+    
+    fetchAndRender();
+    showStatus(`✅ ${items.length} itens importados do RSS substituindo conteúdo atual!`, 'success');
+    
+    closeReplaceRSSModal();
+  }
+
+  // Mesclar dados RSS
+  function mergeRSSData() {
+    if (!pendingRSSData) return;
+    
+    const { targetTab, items } = pendingRSSData;
+    
+    // Adiciona aos itens existentes
+    rssItems[targetTab] = [...rssItems[targetTab], ...items];
+    saveData();
+    
+    // Mudar para a aba correspondente
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.tab[data-tab="${targetTab}"]`).classList.add('active');
+    currentTab = targetTab;
+    
+    fetchAndRender();
+    showStatus(`✅ ${items.length} itens importados do RSS adicionados aos existentes!`, 'success');
+    
+    closeReplaceRSSModal();
+  }
+
+  // Fechar modal de substituição RSS
+  function closeReplaceRSSModal() {
+    document.getElementById('modal-replace-rss').classList.remove('active');
+    pendingRSSData = null;
+    pendingRSSFileName = '';
   }
 
   // Exportar dados específicos
@@ -2103,6 +2206,7 @@
       closeModal();
       closeM3UModal();
       closeExportModal();
+      closeReplaceRSSModal();
     }
   });
 </script>
