@@ -898,6 +898,27 @@
       border: 1px solid #f44336;
       color: #f44336;
     }
+
+    /* Campo de entrada do token GitHub */
+    .github-token-input {
+      margin-top: 15px;
+    }
+    
+    .github-token-input input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #333;
+      background: #0f0f0f;
+      color: #fff;
+      font-family: inherit;
+      font-size: 12px;
+    }
+    
+    .github-token-input input:focus {
+      outline: none;
+      border-color: #2196F3;
+    }
   </style>
 </head>
 <body>
@@ -1160,6 +1181,14 @@
       <button class="btn-download-github" onclick="uploadToGitHub()">🚀 Enviar para GitHub</button>
     </div>
 
+    <div class="github-token-input">
+      <label for="github-token">Token GitHub (opcional):</label>
+      <input type="password" id="github-token" placeholder="Cole seu token GitHub aqui" />
+      <div style="font-size: 11px; color: #888; margin-top: 5px;">
+        💡 Se não funcionar, cole seu token GitHub acima
+      </div>
+    </div>
+
     <div class="github-status" id="github-status"></div>
 
     <div class="modal-buttons">
@@ -1181,7 +1210,6 @@
   const CANAL_LOGO_BASE_URL = 'https://api.reidoscanais.io/img/';
 
   // Configurações do GitHub
-  const GITHUB_TOKEN = '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';
   const GITHUB_REPO = 'Fu6rfho5zf/ROKU';
   const GITHUB_BASE_URL = 'https://api.github.com';
 
@@ -1321,6 +1349,22 @@
     const items = rssItems[currentTab];
     const xmlContent = buildRSSFromItems(items);
     
+    // Obter token do input ou usar o padrão
+    const tokenInput = document.getElementById('github-token');
+    let githubToken = tokenInput.value.trim();
+    
+    if (!githubToken) {
+      // Usar token padrão se não houver input
+      githubToken = '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';
+    }
+    
+    if (!githubToken) {
+      statusDiv.textContent = '❌ Token GitHub não encontrado. Cole seu token no campo acima.';
+      statusDiv.className = 'github-status github-error';
+      statusDiv.style.display = 'block';
+      return;
+    }
+    
     showLoading('Enviando para GitHub...');
     
     try {
@@ -1331,7 +1375,7 @@
           `${GITHUB_BASE_URL}/repos/${GITHUB_REPO}/contents/${fileName}`,
           {
             headers: {
-              'Authorization': `token ${GITHUB_TOKEN}`,
+              'Authorization': `token ${githubToken}`,
               'Accept': 'application/vnd.github.v3+json'
             }
           }
@@ -1352,7 +1396,7 @@
         {
           method: 'PUT',
           headers: {
-            'Authorization': `token ${GITHUB_TOKEN}`,
+            'Authorization': `token ${githubToken}`,
             'Content-Type': 'application/json',
             'Accept': 'application/vnd.github.v3+json'
           },
